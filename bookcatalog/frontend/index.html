@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Catalog</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        input {
+            padding: 5px;
+            margin: 5px;
+        }
+        button {
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        .edit-button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            margin-right: 5px;
+        }
+        .delete-button {
+            background-color: #f44336;
+            color: white;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Book Catalog</h1>
+    
+    <form id="bookForm">
+        <input type="text" name="isbn" placeholder="ISBN" required>
+        <input type="text" name="title" placeholder="Title" required>
+        <input type="text" name="author" placeholder="Author" required>
+        <button type="submit">Add Book</button>
+    </form>
+
+    <table id="booksTable">
+        <thead>
+            <tr>
+                <th>ISBN</th>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="booksTableBody">
+        </tbody>
+    </table>
+
+    <script>
+        const API_URL = 'http://localhost:8080/api/books';
+        let editMode = false;
+        let editingIsbn = null;
+
+        // Load books
+        async function loadBooks() {
+            try {
+                const response = await fetch(API_URL);
+                const books = await response.json();
+                displayBooks(books);
+            } catch (error) {
+                console.error('Error loading books:', error);
+            }
+        }
+
+        // Display books
+        function displayBooks(books) {
+            const tbody = document.getElementById('booksTableBody');
+            tbody.innerHTML = '';
+            books.forEach(book => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${book.isbn}</td>
+                    <td>${book.title}</td>
+                    <td>${book.author}</td>
+                    <td>
+                        <button class="edit-button" onclick="editBook('${book.isbn}')">Edit</button>
+                        <button class="delete-button" onclick="deleteBook('${book.isbn}')">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Handle form submission
+        document.getElementById('bookForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const book = {
+                isbn: formData.get('isbn'),
+                title: formData.get('title'),
+                author: formData.get('author')
+            };
+
+            try {
+                if (editMode) {
+                    await fetch(`${API_URL}/${editingIsbn}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(book)
+                    });
+                } else {
+                    await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(book)
+                    });
+                }
+                e.target.reset();
+                editMode = false;
+                editingIsbn = null;
+                loadBooks();
+            } catch (error) {
+                console.error('Error saving book:', error);
+            }
+        });
+
+        // Edit book
+        async function editBook(isbn) {
+            try {
+                const response = await fetch(`${API_URL}/${isbn}`);
+                const book = await response.json();
+                const form = document.getElementById('bookForm');
+                form.elements['isbn'].value = book.isbn;
+                form.elements['title'].value = book.title;
+                form.elements['author'].value = book.author;
+                editMode = true;
+                editingIsbn = isbn;
+            } catch (error) {
+                console.error('Error loading book for editing:', error);
+            }
+        }
+
+        // Delete book
+        async function deleteBook(isbn) {
+            if (confirm('Are you sure you want to delete this book?')) {
+                try {
+                    await fetch(`${API_URL}/${isbn}`, { method: 'DELETE' });
+                    loadBooks();
+                } catch (error) {
+                    console.error('Error deleting book:', error);
+                }
+            }
+        }
+
+        // Initial load
+        loadBooks();
+    </script>
+</body>
+</html>
