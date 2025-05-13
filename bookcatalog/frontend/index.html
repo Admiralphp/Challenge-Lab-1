@@ -72,7 +72,9 @@
     </table>
 
     <script>
-        const API_URL = 'http://localhost:8080/api/books';
+        const API_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:8080/api/books'
+            : 'http://backend:8080/api/books';
         let editMode = false;
         let editingIsbn = null;
 
